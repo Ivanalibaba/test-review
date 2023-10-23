@@ -1,14 +1,20 @@
+/*
+	12 Поясняющий комментарий процедуры пропущен
+*/
 create procedure syn.usp_ImportFileCustomerSeasonal
 	@ID_Record int
-AS
+-- 01  as Должно быть строчными буквами
+AS	
 set nocount on
 begin
-	declare @RowCount int = (select count(*) from syn.SA_CustomerSeasonal)
+	-- 02 Использовать конструкцию алиаса с from
+	declare @RowCount int = (select count(*) from syn.SA_CustomerSeasonal)	
 	declare @ErrorMessage varchar(max)
 
 -- Проверка на корректность загрузки
 	if not exists (
-	select 1
+		-- 03 Отступы всего блока в скобках от exists
+	select 1	
 	from syn.ImportFile as f
 	where f.ID = @ID_Record
 		and f.FlagLoaded = cast(1 as bit)
@@ -17,6 +23,7 @@ begin
 			set @ErrorMessage = 'Ошибка при загрузке файла, проверьте корректность данных'
 
 			raiserror(@ErrorMessage, 3, 1)
+			-- 07 Пропущена пустая строка
 			return
 		end
 
@@ -29,8 +36,11 @@ begin
 		,cast(cs.DateEnd as date) as DateEnd
 		,c_dist.ID as ID_dbo_CustomerDistributor
 		,cast(isnull(cs.FlagActive, 0) as bit) as FlagActive
+		-- 04 Отступ для into
 	into #CustomerSeasonal
 	from syn.SA_CustomerSeasonal cs
+		-- 05 Явно указать inner join вместо просто join
+		-- 11 При соединение двух таблиц, сперва после on указывать поле присоединяемой таблицы		
 		join dbo.Customer as c on c.UID_DS = cs.UID_DS_Customer
 			and c.ID_mapping_DataSource = 1
 		join dbo.Season as s on s.Name = cs.Season
@@ -46,6 +56,7 @@ begin
 	select
 		cs.*
 		,case
+			-- 06 then с новой строки во всех следующих
 			when c.ID is null then 'UID клиента отсутствует в справочнике "Клиент"'
 			when c_dist.ID is null then 'UID дистрибьютора отсутствует в справочнике "Клиент"'
 			when s.ID is null then 'Сезон отсутствует в справочнике "Сезон"'
@@ -56,8 +67,10 @@ begin
 		end as Reason
 	into #BadInsertedRows
 	from syn.SA_CustomerSeasonal as cs
+		-- 08 Должен быть отступ на tab
 	left join dbo.Customer as c on c.UID_DS = cs.UID_DS_Customer
 		and c.ID_mapping_DataSource = 1
+		-- 09 Перенос and на новую строку
 	left join dbo.Customer as c_dist on c_dist.UID_DS = cs.UID_DS_CustomerDistributor and c_dist.ID_mapping_DataSource = 1
 	left join dbo.Season as s on s.Name = cs.Season
 	left join syn.CustomerSystemType as cst on cst.Name = cs.CustomerSystemType
@@ -94,6 +107,7 @@ begin
 			,FlagActive = s.FlagActive
 	when not matched then
 		insert (ID_dbo_Customer, ID_CustomerSystemType, ID_Season, DateBegin, DateEnd, ID_dbo_CustomerDistributor, FlagActive)
+		-- 10 ";" в этой же строке, без переноса на новую
 		values (s.ID_dbo_Customer, s.ID_CustomerSystemType, s.ID_Season, s.DateBegin, s.DateEnd, s.ID_dbo_CustomerDistributor, s.FlagActive)
 	;
 
